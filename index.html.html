@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Finance Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0F0F0F;
+    --surface: #1A1A1A;
+    --surface-hover: #222222;
+    --border: #2A2A2A;
+    --border-light: #333333;
+    --text: #F0EDE6;
+    --text-muted: #8A8680;
+    --text-dim: #5A5754;
+    --expense-accent: #E8453C;
+    --expense-glow: rgba(232, 69, 60, 0.12);
+    --income-accent: #34D399;
+    --income-glow: rgba(52, 211, 153, 0.12);
+    --white: #FFFFFF;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 40px 20px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .tracker {
+    width: 100%;
+    max-width: 1100px;
+  }
+
+  .tracker-header {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    margin-bottom: 28px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .tracker-header h1 {
+    font-family: 'Instrument Serif', serif;
+    font-size: 32px;
+    font-weight: 400;
+    letter-spacing: -0.5px;
+    color: var(--text);
+  }
+
+  .tracker-header span {
+    font-size: 13px;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  /* Month Navigator */
+  .month-nav {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-bottom: 24px;
+    animation: fadeIn 0.4s ease;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  .month-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-muted);
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+  }
+
+  .month-btn:hover {
+    background: var(--surface-hover);
+    color: var(--text);
+    border-color: var(--border-light);
+  }
+
+  .month-label {
+    font-family: 'Instrument Serif', serif;
+    font-size: 22px;
+    min-width: 200px;
+    text-align: center;
+    color: var(--text);
+    user-select: none;
+  }
+
+  .month-label .year {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+    margin-left: 6px;
+    vertical-align: middle;
+  }
+
+  /* P&L Strip */
+  .pnl-strip {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  .pnl-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 20px;
+    animation: panelIn 0.4s ease both;
+  }
+
+  .pnl-card:nth-child(2) { animation-delay: 0.05s; }
+  .pnl-card:nth-child(3) { animation-delay: 0.1s; }
+
+  .pnl-card-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+  }
+
+  .pnl-card-value {
+    font-family: 'Instrument Serif', serif;
+    font-size: 26px;
+  }
+
+  .pnl-income { color: var(--income-accent); }
+  .pnl-expense { color: var(--expense-accent); }
+  .pnl-positive { color: var(--income-accent); }
+  .pnl-negative { color: var(--expense-accent); }
+
+  /* Mini chart */
+  .chart-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px 24px 16px;
+    margin-bottom: 24px;
+    animation: panelIn 0.4s ease both;
+    animation-delay: 0.12s;
+  }
+
+  .chart-title {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 16px;
+  }
+
+  .chart-bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 6px;
+    height: 90px;
+    padding-bottom: 24px;
+    position: relative;
+  }
+
+  .chart-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    height: 100%;
+    justify-content: flex-end;
+    cursor: pointer;
+    position: relative;
+  }
+
+  .chart-bar-group {
+    display: flex;
+    gap: 2px;
+    align-items: flex-end;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .chart-bar {
+    width: 40%;
+    max-width: 18px;
+    min-height: 2px;
+    border-radius: 3px 3px 0 0;
+    transition: all 0.4s ease;
+  }
+
+  .chart-bar.income-bar { background: var(--income-accent); }
+  .chart-bar.expense-bar { background: var(--expense-accent); }
+
+  .chart-col.active .chart-bar.income-bar {
+    box-shadow: 0 0 10px rgba(52, 211, 153, 0.4);
+  }
+  .chart-col.active .chart-bar.expense-bar {
+    box-shadow: 0 0 10px rgba(232, 69, 60, 0.4);
+  }
+
+  .chart-month-label {
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    position: absolute;
+    bottom: -20px;
+  }
+
+  .chart-col.active .chart-month-label {
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  .chart-zero-line {
+    position: absolute;
+    bottom: 24px;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .chart-legend {
+    display: flex;
+    gap: 16px;
+    justify-content: flex-end;
+    margin-top: 8px;
+  }
+
+  .chart-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+
+  .chart-legend-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+  }
+
+  /* Panels */
+  .panels {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+
+  @media (max-width: 768px) {
+    .panels { grid-template-columns: 1fr; }
+    .pnl-strip { grid-template-columns: 1fr; }
+  }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    animation: panelIn 0.5s ease both;
+    animation-delay: 0.15s;
+  }
+  .panel:nth-child(2) { animation-delay: 0.2s; }
+
+  @keyframes panelIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .panel-header {
+    padding: 24px 24px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .panel-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .panel-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+
+  .panel-dot.expense { background: var(--expense-accent); box-shadow: 0 0 8px var(--expense-accent); }
+  .panel-dot.income { background: var(--income-accent); box-shadow: 0 0 8px var(--income-accent); }
+
+  .panel-title h2 {
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .panel-total {
+    font-family: 'Instrument Serif', serif;
+    font-size: 24px;
+    color: var(--text);
+  }
+
+  .panel-body { padding: 20px 24px 24px; }
+
+  .form-group { margin-bottom: 14px; }
+
+  .form-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+  }
+
+  .form-input {
+    width: 100%;
+    padding: 10px 14px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    transition: border-color 0.2s;
+    outline: none;
+  }
+
+  .form-input:focus { border-color: var(--border-light); }
+  .form-input::placeholder { color: var(--text-dim); }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .toggle-group {
+    display: flex;
+    background: var(--bg);
+    border-radius: 8px;
+    padding: 3px;
+    border: 1px solid var(--border);
+  }
+
+  .toggle-btn {
+    flex: 1;
+    padding: 8px 12px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text-dim);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.25s ease;
+  }
+
+  .toggle-btn.active-expense {
+    background: var(--expense-glow);
+    color: var(--expense-accent);
+    box-shadow: 0 0 12px var(--expense-glow);
+  }
+
+  .btn-add {
+    width: 100%;
+    padding: 11px;
+    border: 1px dashed var(--border-light);
+    border-radius: 10px;
+    background: transparent;
+    color: var(--text-muted);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.25s;
+    margin-top: 6px;
+    letter-spacing: 0.3px;
+  }
+
+  .btn-add:hover {
+    border-color: var(--text-dim);
+    color: var(--text);
+    background: var(--surface-hover);
+  }
+
+  .btn-add.expense-btn:hover {
+    border-color: var(--expense-accent);
+    color: var(--expense-accent);
+    background: var(--expense-glow);
+  }
+
+  .btn-add.income-btn:hover {
+    border-color: var(--income-accent);
+    color: var(--income-accent);
+    background: var(--income-glow);
+  }
+
+  .entries {
+    margin-top: 20px;
+    border-top: 1px solid var(--border);
+    padding-top: 16px;
+  }
+
+  .entries-title {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 12px;
+  }
+
+  .entry {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 8px;
+    animation: entryIn 0.3s ease both;
+  }
+
+  @keyframes entryIn {
+    from { opacity: 0; transform: translateX(-8px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  .entry-left {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .entry-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .entry-meta {
+    font-size: 12px;
+    color: var(--text-dim);
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .entry-tag {
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    flex-shrink: 0;
+  }
+
+  .tag-oneoff {
+    background: rgba(232, 69, 60, 0.1);
+    color: var(--expense-accent);
+  }
+
+  .tag-recurring {
+    background: rgba(255, 180, 60, 0.1);
+    color: #FFB43C;
+  }
+
+  .entry-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+    margin-left: 12px;
+  }
+
+  .entry-amount {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+  }
+
+  .entry-amount.expense { color: var(--expense-accent); }
+  .entry-amount.income { color: var(--income-accent); }
+
+  .btn-delete {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    border: none;
+    background: transparent;
+    color: var(--text-dim);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    font-size: 14px;
+  }
+
+  .btn-delete:hover {
+    background: rgba(232, 69, 60, 0.12);
+    color: var(--expense-accent);
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 24px 0;
+    color: var(--text-dim);
+    font-size: 13px;
+    font-style: italic;
+  }
+
+  .file-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: border-color 0.2s;
+    font-size: 13px;
+    color: var(--text-dim);
+  }
+
+  .file-label:hover { border-color: var(--border-light); }
+  .file-label svg { flex-shrink: 0; }
+
+  .file-label .file-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  input[type="file"] { display: none; }
+</style>
+</head>
+<body>
+
+<div class="tracker" id="app"></div>
+
+<script>
+  const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  const now = new Date();
+  const state = {
+    currentMonth: now.getMonth(),
+    currentYear: now.getFullYear(),
+    expenseType: 'one-off',
+    data: {}
+  };
+
+  function monthKey(y, m) { return `${y}-${String(m).padStart(2,'0')}`; }
+  function curKey() { return monthKey(state.currentYear, state.currentMonth); }
+
+  function getMonthData(key) {
+    if (!state.data[key]) state.data[key] = { expenses: [], incomes: [] };
+    return state.data[key];
+  }
+
+  function formatCurrency(n) {
+    return '$' + Math.abs(Number(n)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function getTotal(arr) {
+    return arr.reduce((s, e) => s + Number(e.amount), 0);
+  }
+
+  function esc(s) {
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  function prevMonth() {
+    state.currentMonth--;
+    if (state.currentMonth < 0) { state.currentMonth = 11; state.currentYear--; }
+    render();
+  }
+
+  function nextMonth() {
+    state.currentMonth++;
+    if (state.currentMonth > 11) { state.currentMonth = 0; state.currentYear++; }
+    render();
+  }
+
+  function goToMonth(y, m) {
+    state.currentYear = y;
+    state.currentMonth = m;
+    render();
+  }
+
+  function setExpenseType(type) {
+    state.expenseType = type;
+    render();
+  }
+
+  function addExpense() {
+    const desc = document.getElementById('exp-desc').value.trim();
+    const amount = document.getElementById('exp-amount').value;
+    const date = document.getElementById('exp-date').value;
+    const fileInput = document.getElementById('exp-file');
+    if (!desc || !amount || !date) return;
+    const md = getMonthData(curKey());
+    md.expenses.push({
+      desc, amount: parseFloat(amount), date,
+      type: state.expenseType,
+      file: fileInput.files.length ? fileInput.files[0].name : null
+    });
+    render();
+  }
+
+  function addIncome() {
+    const source = document.getElementById('inc-source').value.trim();
+    const amount = document.getElementById('inc-amount').value;
+    const date = document.getElementById('inc-date').value;
+    const fileInput = document.getElementById('inc-file');
+    if (!source || !amount || !date) return;
+    const md = getMonthData(curKey());
+    md.incomes.push({
+      source, amount: parseFloat(amount), date,
+      file: fileInput.files.length ? fileInput.files[0].name : null
+    });
+    render();
+  }
+
+  function removeExpense(i) { getMonthData(curKey()).expenses.splice(i, 1); render(); }
+  function removeIncome(i) { getMonthData(curKey()).incomes.splice(i, 1); render(); }
+
+  function updateFileLabel(prefix) {
+    const input = document.getElementById(prefix + '-file');
+    const label = document.getElementById(prefix + '-file-label');
+    const nameSpan = label.querySelector('.file-name');
+    nameSpan.textContent = input.files.length ? input.files[0].name : (prefix === 'exp' ? 'Attach receipt…' : 'Attach invoice…');
+  }
+
+  function getChartData() {
+    const months = [];
+    for (let i = 5; i >= 0; i--) {
+      let m = state.currentMonth - i;
+      let y = state.currentYear;
+      while (m < 0) { m += 12; y--; }
+      const key = monthKey(y, m);
+      const d = state.data[key] || { expenses: [], incomes: [] };
+      months.push({
+        month: m, year: y, key,
+        income: getTotal(d.incomes),
+        expense: getTotal(d.expenses),
+        label: MONTHS_SHORT[m],
+        isCurrent: m === state.currentMonth && y === state.currentYear
+      });
+    }
+    return months;
+  }
+
+  function render() {
+    const md = getMonthData(curKey());
+    const expTotal = getTotal(md.expenses);
+    const incTotal = getTotal(md.incomes);
+    const net = incTotal - expTotal;
+    const chart = getChartData();
+    const maxVal = Math.max(...chart.map(c => Math.max(c.income, c.expense)), 1);
+
+    document.getElementById('app').innerHTML = `
+      <div class="tracker-header">
+        <h1>Finances</h1>
+        <span>Business Tracker</span>
+      </div>
+
+      <!-- Month Navigator -->
+      <div class="month-nav">
+        <button class="month-btn" onclick="prevMonth()">&#8249;</button>
+        <div class="month-label">${MONTHS[state.currentMonth]} <span class="year">${state.currentYear}</span></div>
+        <button class="month-btn" onclick="nextMonth()">&#8250;</button>
+      </div>
+
+      <!-- P&L Summary -->
+      <div class="pnl-strip">
+        <div class="pnl-card">
+          <div class="pnl-card-label">Total Income</div>
+          <div class="pnl-card-value pnl-income">${formatCurrency(incTotal)}</div>
+        </div>
+        <div class="pnl-card">
+          <div class="pnl-card-label">Total Expenses</div>
+          <div class="pnl-card-value pnl-expense">${formatCurrency(expTotal)}</div>
+        </div>
+        <div class="pnl-card">
+          <div class="pnl-card-label">Net Profit / Loss</div>
+          <div class="pnl-card-value ${net >= 0 ? 'pnl-positive' : 'pnl-negative'}">${net >= 0 ? '+' : '-'}${formatCurrency(net)}</div>
+        </div>
+      </div>
+
+      <!-- 6-Month Chart -->
+      <div class="chart-section">
+        <div class="chart-title">6-Month Overview</div>
+        <div class="chart-bars">
+          <div class="chart-zero-line"></div>
+          ${chart.map(c => `
+            <div class="chart-col ${c.isCurrent ? 'active' : ''}" onclick="goToMonth(${c.year},${c.month})">
+              <div class="chart-bar-group">
+                <div class="chart-bar income-bar" style="height:${Math.max((c.income / maxVal) * 60, c.income > 0 ? 3 : 0)}px"></div>
+                <div class="chart-bar expense-bar" style="height:${Math.max((c.expense / maxVal) * 60, c.expense > 0 ? 3 : 0)}px"></div>
+              </div>
+              <span class="chart-month-label">${c.label}</span>
+            </div>
+          `).join('')}
+        </div>
+        <div class="chart-legend">
+          <div class="chart-legend-item"><div class="chart-legend-dot" style="background:var(--income-accent)"></div>Income</div>
+          <div class="chart-legend-item"><div class="chart-legend-dot" style="background:var(--expense-accent)"></div>Expenses</div>
+        </div>
+      </div>
+
+      <!-- Panels -->
+      <div class="panels">
+        <!-- EXPENSES -->
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <div class="panel-dot expense"></div>
+              <h2>Monthly Expenses</h2>
+            </div>
+            <div class="panel-total">${formatCurrency(expTotal)}</div>
+          </div>
+          <div class="panel-body">
+            <div class="form-group">
+              <label class="form-label">Type</label>
+              <div class="toggle-group">
+                <button class="toggle-btn ${state.expenseType === 'one-off' ? 'active-expense' : ''}" onclick="setExpenseType('one-off')">One-Off</button>
+                <button class="toggle-btn ${state.expenseType === 'recurring' ? 'active-expense' : ''}" onclick="setExpenseType('recurring')">Recurring</button>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Description</label>
+              <input type="text" class="form-input" id="exp-desc" placeholder="e.g. Office supplies">
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Amount</label>
+                <input type="number" class="form-input" id="exp-amount" placeholder="0.00" step="0.01" min="0">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Date Paid</label>
+                <input type="date" class="form-input" id="exp-date">
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Receipt</label>
+              <label class="file-label" id="exp-file-label">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
+                <span class="file-name">Attach receipt…</span>
+                <input type="file" id="exp-file" accept="image/*,.pdf" onchange="updateFileLabel('exp')">
+              </label>
+            </div>
+            <button class="btn-add expense-btn" onclick="addExpense()">+ Add Expense</button>
+            ${md.expenses.length > 0 ? `
+              <div class="entries">
+                <div class="entries-title">Entries</div>
+                ${md.expenses.map((e, i) => `
+                  <div class="entry" style="animation-delay:${i * 0.05}s">
+                    <div class="entry-left">
+                      <div class="entry-name">${esc(e.desc)}</div>
+                      <div class="entry-meta">
+                        <span class="entry-tag ${e.type === 'recurring' ? 'tag-recurring' : 'tag-oneoff'}">${e.type === 'recurring' ? 'Recurring' : 'One-off'}</span>
+                        ${e.date}${e.file ? ' &middot; &#128206;' : ''}
+                      </div>
+                    </div>
+                    <div class="entry-right">
+                      <span class="entry-amount expense">-${formatCurrency(e.amount)}</span>
+                      <button class="btn-delete" onclick="removeExpense(${i})">&#10005;</button>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            ` : '<div class="empty-state">No expenses recorded yet</div>'}
+          </div>
+        </div>
+
+        <!-- INCOME -->
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <div class="panel-dot income"></div>
+              <h2>Monthly Income</h2>
+            </div>
+            <div class="panel-total">${formatCurrency(incTotal)}</div>
+          </div>
+          <div class="panel-body">
+            <div class="form-group">
+              <label class="form-label">Company / Source</label>
+              <input type="text" class="form-input" id="inc-source" placeholder="e.g. Acme Corp">
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Amount</label>
+                <input type="number" class="form-input" id="inc-amount" placeholder="0.00" step="0.01" min="0">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Date Paid</label>
+                <input type="date" class="form-input" id="inc-date">
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Invoice / Receipt</label>
+              <label class="file-label" id="inc-file-label">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
+                <span class="file-name">Attach invoice…</span>
+                <input type="file" id="inc-file" accept="image/*,.pdf" onchange="updateFileLabel('inc')">
+              </label>
+            </div>
+            <button class="btn-add income-btn" onclick="addIncome()">+ Add Income</button>
+            ${md.incomes.length > 0 ? `
+              <div class="entries">
+                <div class="entries-title">Entries</div>
+                ${md.incomes.map((e, i) => `
+                  <div class="entry" style="animation-delay:${i * 0.05}s">
+                    <div class="entry-left">
+                      <div class="entry-name">${esc(e.source)}</div>
+                      <div class="entry-meta">
+                        ${e.date}${e.file ? ' &middot; &#128206;' : ''}
+                      </div>
+                    </div>
+                    <div class="entry-right">
+                      <span class="entry-amount income">+${formatCurrency(e.amount)}</span>
+                      <button class="btn-delete" onclick="removeIncome(${i})">&#10005;</button>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            ` : '<div class="empty-state">No income recorded yet</div>'}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  render();
+</script>
+</body>
+</html>

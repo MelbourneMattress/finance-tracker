@@ -64,7 +64,6 @@
     text-transform: uppercase;
   }
 
-  /* Month Navigator */
   .month-nav {
     display: flex;
     align-items: center;
@@ -118,7 +117,6 @@
     vertical-align: middle;
   }
 
-  /* P&L Strip */
   .pnl-strip {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -156,7 +154,6 @@
   .pnl-positive { color: var(--income-accent); }
   .pnl-negative { color: var(--expense-accent); }
 
-  /* Mini chart */
   .chart-section {
     background: var(--surface);
     border: 1px solid var(--border);
@@ -267,7 +264,6 @@
     border-radius: 50%;
   }
 
-  /* Panels */
   .panels {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -575,15 +571,40 @@
   }
 
   input[type="file"] { display: none; }
+
+  /* Save indicator */
+  .save-indicator {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    padding: 8px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 12px;
+    color: var(--income-accent);
+    opacity: 0;
+    transform: translateY(10px);
+    transition: all 0.3s ease;
+    pointer-events: none;
+    z-index: 100;
+  }
+
+  .save-indicator.show {
+    opacity: 1;
+    transform: translateY(0);
+  }
 </style>
 </head>
 <body>
 
 <div class="tracker" id="app"></div>
+<div class="save-indicator" id="save-indicator">&#10003; Data saved</div>
 
 <script>
   const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
   const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const STORAGE_KEY = 'financeTrackerData';
 
   const now = new Date();
   const state = {
@@ -593,6 +614,38 @@
     data: {}
   };
 
+  // ---- PERSISTENCE ----
+  function saveData() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state.data));
+      showSaveIndicator();
+    } catch (e) {
+      console.warn('Could not save data:', e);
+    }
+  }
+
+  function loadData() {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        state.data = JSON.parse(saved);
+      }
+    } catch (e) {
+      console.warn('Could not load data:', e);
+    }
+  }
+
+  function showSaveIndicator() {
+    const el = document.getElementById('save-indicator');
+    el.classList.add('show');
+    clearTimeout(window._saveTimeout);
+    window._saveTimeout = setTimeout(() => el.classList.remove('show'), 1500);
+  }
+
+  // Load saved data on startup
+  loadData();
+
+  // ---- HELPERS ----
   function monthKey(y, m) { return `${y}-${String(m).padStart(2,'0')}`; }
   function curKey() { return monthKey(state.currentYear, state.currentMonth); }
 
@@ -615,6 +668,7 @@
     return d.innerHTML;
   }
 
+  // ---- ACTIONS ----
   function prevMonth() {
     state.currentMonth--;
     if (state.currentMonth < 0) { state.currentMonth = 11; state.currentYear--; }
@@ -650,6 +704,7 @@
       type: state.expenseType,
       file: fileInput.files.length ? fileInput.files[0].name : null
     });
+    saveData();
     render();
   }
 
@@ -664,11 +719,21 @@
       source, amount: parseFloat(amount), date,
       file: fileInput.files.length ? fileInput.files[0].name : null
     });
+    saveData();
     render();
   }
 
-  function removeExpense(i) { getMonthData(curKey()).expenses.splice(i, 1); render(); }
-  function removeIncome(i) { getMonthData(curKey()).incomes.splice(i, 1); render(); }
+  function removeExpense(i) {
+    getMonthData(curKey()).expenses.splice(i, 1);
+    saveData();
+    render();
+  }
+
+  function removeIncome(i) {
+    getMonthData(curKey()).incomes.splice(i, 1);
+    saveData();
+    render();
+  }
 
   function updateFileLabel(prefix) {
     const input = document.getElementById(prefix + '-file');
@@ -696,6 +761,7 @@
     return months;
   }
 
+  // ---- RENDER ----
   function render() {
     const md = getMonthData(curKey());
     const expTotal = getTotal(md.expenses);
@@ -710,14 +776,12 @@
         <span>Business Tracker</span>
       </div>
 
-      <!-- Month Navigator -->
       <div class="month-nav">
         <button class="month-btn" onclick="prevMonth()">&#8249;</button>
         <div class="month-label">${MONTHS[state.currentMonth]} <span class="year">${state.currentYear}</span></div>
         <button class="month-btn" onclick="nextMonth()">&#8250;</button>
       </div>
 
-      <!-- P&L Summary -->
       <div class="pnl-strip">
         <div class="pnl-card">
           <div class="pnl-card-label">Total Income</div>
@@ -733,7 +797,6 @@
         </div>
       </div>
 
-      <!-- 6-Month Chart -->
       <div class="chart-section">
         <div class="chart-title">6-Month Overview</div>
         <div class="chart-bars">
@@ -754,9 +817,7 @@
         </div>
       </div>
 
-      <!-- Panels -->
       <div class="panels">
-        <!-- EXPENSES -->
         <div class="panel">
           <div class="panel-header">
             <div class="panel-title">
@@ -819,7 +880,6 @@
           </div>
         </div>
 
-        <!-- INCOME -->
         <div class="panel">
           <div class="panel-header">
             <div class="panel-title">
